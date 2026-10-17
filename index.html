@@ -1,0 +1,81 @@
+<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Испорченный переводчик</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font:16px/1.4 system-ui,sans-serif;background:#111827;color:#e5e7eb}
+html{-webkit-text-size-adjust:100%}main{max-width:640px;margin:0 auto;padding:12px}button,select{min-height:44px;touch-action:manipulation}button.c{min-height:32px}textarea,#fin,#out div{overflow-wrap:anywhere}details summary{cursor:pointer;padding:4px 0}
+@media(min-width:768px){main{max-width:720px;padding:20px}h1{font-size:28px}}
+@media(min-width:1100px){main{max-width:1240px;padding:24px 32px}.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:start}.res{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto}#chips{max-height:260px}textarea{min-height:140px}}
+@media(min-width:1700px){main{max-width:1500px}}h1{font-size:22px;margin:8px 0 12px;text-align:center}
+textarea,select,button{font:inherit;border-radius:10px;border:1px solid #374151;background:#1f2937;color:#e5e7eb;padding:10px}
+textarea{width:100%;min-height:90px;resize:vertical}select{width:100%}label{display:block;margin:12px 0 4px;color:#9ca3af;font-size:14px}
+button{background:#374151}button:disabled{opacity:.5}.p{background:#2563eb;border-color:#2563eb;width:100%;font-weight:bold;padding:14px;margin-top:14px}
+.stop{background:#b91c1c;border-color:#b91c1c;width:100%;margin-top:6px;display:none}
+.row{display:flex;gap:6px;margin:6px 0}.row select{flex:1}.btns{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.btns button{flex:1 0 auto;padding:8px 10px}
+#chips{display:flex;flex-wrap:wrap;gap:4px;max-height:180px;overflow:auto;padding:4px;background:#0b1220;border-radius:10px;min-height:38px}
+.c{font-size:13px;padding:3px 8px;border-radius:12px;background:#1e3a8a;border:0}.n{color:#6b7280;font-size:13px}
+details,.final{background:#1f2937;border-radius:10px;padding:8px 10px;margin:6px 0;border-left:4px solid #2563eb}summary{color:#93c5fd;font-size:13px}
+.final{border-left-color:#22c55e;background:#14301f}.err{border-left-color:#ef4444}#prog{text-align:center;margin:8px 0;color:#93c5fd}
+</style></head><body><main>
+<h1>📞 Испорченный переводчик</h1>
+<div class="grid"><div class="col">
+<label>Текст</label><textarea id="txt" placeholder="Введите текст...">Привет! Как у тебя дела сегодня?</textarea>
+<label>Исходный язык</label><select id="src"></select>
+<label>Цепочка языков: <span id="cnt"></span> <span class="n">(нажми на язык, чтобы убрать)</span></label>
+<div id="chips"></div>
+<div class="row"><select id="pick"></select><button id="add">➕</button></div>
+<div class="n">Добавить случайные языки:</div>
+<div class="btns" id="rb"></div>
+<div class="btns"><button id="shuf">🔀 Перемешать</button><button id="clr">🗑 Очистить цепочку</button></div>
+<label>Финальный язык</label><select id="dst"></select>
+<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="spd"> Осторожный режим (медленнее, меньше риск блокировки)</label>
+<button class="p" id="go">Перевести по цепочке</button><button class="stop" id="stop">⏹ Стоп</button>
+</div><div class="col res"><div id="prog"></div><div id="fin"></div><div id="out"></div>
+<p class="n">Перевод: Google Translate (запасной — MyMemory). Промежуточные шаги свёрнуты — нажми, чтобы открыть.</p>
+</div></div>
+</main><script>
+const L="af:Африкаанс,sq:Албанский,am:Амхарский,ar:Арабский,hy:Армянский,as:Ассамский,ay:Аймара,az:Азербайджанский,bm:Бамбара,eu:Баскский,be:Белорусский,bn:Бенгальский,bho:Бходжпури,bs:Боснийский,bg:Болгарский,ca:Каталанский,ceb:Себуанский,ny:Чичева,zh-CN:Китайский (упр.),zh-TW:Китайский (трад.),co:Корсиканский,hr:Хорватский,cs:Чешский,da:Датский,dv:Мальдивский,doi:Догри,nl:Нидерландский,en:Английский,eo:Эсперанто,et:Эстонский,ee:Эве,tl:Филиппинский,fi:Финский,fr:Французский,fy:Фризский,gl:Галисийский,ka:Грузинский,de:Немецкий,el:Греческий,gn:Гуарани,gu:Гуджарати,ht:Гаитянский,ha:Хауса,haw:Гавайский,iw:Иврит,hi:Хинди,hmn:Хмонг,hu:Венгерский,is:Исландский,ig:Игбо,ilo:Илокано,id:Индонезийский,ga:Ирландский,it:Итальянский,ja:Японский,jw:Яванский,kn:Каннада,kk:Казахский,km:Кхмерский,rw:Киньяруанда,gom:Конкани,ko:Корейский,kri:Крио,ku:Курдский (курманджи),ckb:Курдский (сорани),ky:Киргизский,lo:Лаосский,la:Латинский,lv:Латышский,ln:Лингала,lt:Литовский,lg:Луганда,lb:Люксембургский,mk:Македонский,mai:Майтхили,mg:Малагасийский,ms:Малайский,ml:Малаялам,mt:Мальтийский,mi:Маори,mr:Маратхи,mni-Mtei:Манипури,lus:Мизо,mn:Монгольский,my:Бирманский,ne:Непальский,no:Норвежский,or:Ория,om:Оромо,ps:Пушту,fa:Персидский,pl:Польский,pt:Португальский (Бразилия),pa:Панджаби,qu:Кечуа,ro:Румынский,ru:Русский,sm:Самоанский,sa:Санскрит,gd:Шотландский гэльский,nso:Сепеди,sr:Сербский,st:Сесото,sn:Шона,sd:Синдхи,si:Сингальский,sk:Словацкий,sl:Словенский,so:Сомали,es:Испанский,su:Сунданский,sw:Суахили,sv:Шведский,tg:Таджикский,ta:Тамильский,tt:Татарский,te:Телугу,th:Тайский,ti:Тигринья,ts:Тсонга,tr:Турецкий,tk:Туркменский,ak:Тви,uk:Украинский,ur:Урду,ug:Уйгурский,uz:Узбекский,vi:Вьетнамский,cy:Валлийский,xh:Коса,yi:Идиш,yo:Йоруба,zu:Зулу,ab:Абхазский,ace:Ачехский,ach:Ачоли,aa:Афарский,alz:Алур,av:Аварский,awa:Авадхи,ban:Балийский,bal:Белуджский,bci:Бауле,ba:Башкирский,btx:Батак каро,bts:Батак сималунгун,bbc:Батак тоба,bem:Бемба,bew:Бетави,bik:Бикольский,br:Бретонский,bua:Бурятский,yue:Кантонский,ch:Чаморро,ce:Чеченский,chk:Чуукский,cv:Чувашский,crh:Крымскотатарский,fa-AF:Дари,din:Динка,dov:Домбе,dyu:Дьюла,dz:Дзонг-кэ,fo:Фарерский,fj:Фиджи,fon:Фон,fur:Фриульский,ff:Фула,gaa:Га,cnh:Хакха-чин,hil:Хилигайнон,hrx:Хунсрик,iba:Ибан,iu:Инуктитут,jam:Ямайский креольский,kac:Качинский,kl:Гренландский,kr:Канури,pam:Капампанган,kha:Кхаси,cgg:Кига,kg:Конго,ktu:Китуба,trp:Кокборок,kv:Коми,ltg:Латгальский,lij:Лигурский,li:Лимбургский,lmo:Ломбардский,luo:Луо,mad:Мадурский,mak:Макассарский,ms-Arab:Малайский (джави),mam:Мам,gv:Мэнский,mh:Маршалльский,mwr:Марвари,mfe:Маврикийский креольский,chm:Марийский (луговой),min:Минангкабау,nhe:Науатль,ndc-ZW:Ндау,nr:Южный ндебеле,new:Неварский,bm-Nkoo:Нко,nus:Нуэр,oc:Окситанский,os:Осетинский,pag:Пангасинан,pap:Папьяменто,pa-Arab:Панджаби (шахмукхи),kek:Кекчи,rom:Цыганский,rn:Рунди,se:Северносаамский,sg:Санго,sat:Сантали,crs:Сейшельский креольский,shn:Шанский,scn:Сицилийский,szl:Силезский,sus:Сусу,ss:Свати,ty:Таитянский,ber-Latn:Тамазигхтский,ber:Тамазигхтский (тифинаг),tet:Тетум,bo:Тибетский,tiv:Тив,tpi:Ток-писин,to:Тонганский,lua:Чилуба,tn:Тсвана,tcy:Тулу,tum:Тумбука,tyv:Тувинский,udm:Удмуртский,vec:Венетский,war:Варайский,wo:Волоф,sah:Якутский,yua:Юкатекский майя,zap:Сапотекский,ve:Венда,pt-PT:Португальский (Португалия),fr-CA:Французский (Канада)".split(",").map(s=>{const i=s.indexOf(":");return[s.slice(0,i),s.slice(i+1)]}).sort((a,b)=>a[1].localeCompare(b[1],"ru"));
+const N=Object.fromEntries(L),C=L.map(x=>x[0]),$=id=>document.getElementById(id);
+const opts=(sel,auto)=>(auto?'<option value="auto">Определить автоматически</option>':'')+L.map(([c,n])=>`<option value="${c}"${c==sel?' selected':''}>${n}</option>`).join("");
+$("src").innerHTML=opts("ru",1);$("dst").innerHTML=opts("ru");$("pick").innerHTML=opts("en");
+let chain=["en","ja"],stop=false;
+let showAll=false;function draw(){const lim=showAll?chain.length:50;$("chips").innerHTML=chain.slice(0,lim).map((c,i)=>`<button class="c" data-i="${i}">${i+1}. ${N[c]} ✕</button>`).join("")+(chain.length>lim?`<button class="c" data-more="1" style="background:#374151">…ещё ${chain.length-lim} — показать все</button>`:"")||'<span class="n">пусто</span>';$("cnt").textContent=chain.length}
+$("chips").onclick=e=>{if(e.target.dataset.more){showAll=true;draw();return}const i=e.target.dataset.i;if(i!=null){chain.splice(+i,1);draw()}};
+$("add").onclick=()=>{chain.push($("pick").value);draw()};
+$("rb").innerHTML=[1,2,5,10,25,50,100,250,500,1000].map(n=>`<button data-n="${n}">+${n}</button>`).join("")+`<button data-all="1">🌍 Все языки</button>`;
+$("rb").onclick=e=>{if(e.target.dataset.all){const p=C.filter(c=>c!=chain[chain.length-1]);for(let i=p.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[p[i],p[j]]=[p[j],p[i]]}chain=chain.concat(p);draw();return}let n=+e.target.dataset.n;if(!n)return;let last=chain[chain.length-1];
+ while(n--){let c;do c=C[Math.random()*C.length|0];while(c==last);chain.push(last=c)}draw()};
+$("shuf").onclick=()=>{for(let i=chain.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[chain[i],chain[j]]=[chain[j],chain[i]]}draw()};
+$("clr").onclick=()=>{chain=[];showAll=false;draw()};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let cur=null;
+function tf(u){const a=cur=new AbortController(),h=setTimeout(()=>a.abort(),careful()?10000:3000);return fetch(u,{signal:a.signal,keepalive:true}).finally(()=>clearTimeout(h))}
+const careful=()=>$("spd").checked;
+// split text into chunks <= max chars, preferring sentence/space boundaries
+function chunks(t,max){const out=[];while(t.length>max){let k=-1;for(const sep of [". ","! ","? ","\n"," "]){k=t.lastIndexOf(sep,max-sep.length);if(k>max/2){k+=sep.length;break}k=-1}if(k<1)k=max;out.push(t.slice(0,k));t=t.slice(k)}if(t)out.push(t);return out}
+async function google1(t,s,d){const r=await tf(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${s}&tl=${d}&dt=t&q=${encodeURIComponent(t)}`);
+ if(!r.ok)throw Error("Google HTTP "+r.status);const j=await r.json();const o=(j&&j[0]||[]).map(x=>x&&x[0]||"").join("");if(!o&&t.trim())throw Error("Google: пустой ответ");return o}
+async function google(t,s,d){let o="";for(const c of chunks(t,1500))o+=await google1(c,s,d);return o}
+const mm=c=>({iw:"he",jw:"jv"}[c]||c);
+const dec=s=>{const e=document.createElement("textarea");e.innerHTML=s;return e.value};
+async function mymem1(t,s,d){const r=await tf(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(t)}&langpair=${s=="auto"?"Autodetect":mm(s)}|${mm(d)}`);
+ if(!r.ok)throw Error("MyMemory HTTP "+r.status);const j=await r.json();const o=j.responseData&&j.responseData.translatedText;
+ if(j.responseStatus!=200||!o||/^MYMEMORY WARNING|INVALID (TARGET|SOURCE) LANGUAGE/i.test(o))throw Error("MyMemory: "+(j.responseDetails||o||"ошибка"));return dec(o).replace(/<[^>]*>%\d+%<\/[^>]*>|%\d+%/g,"").replace(/<\/?[a-z][^>]*>/gi,"").replace(/\s+([,!?.])/g,"$1").replace(/\s{2,}/g," ").trim()}
+async function mymem(t,s,d){let o="";for(const c of chunks(t,450))o+=(o?" ":"")+await mymem1(c,s,d);return o}
+async function tr(t,s,d){let err;for(let k=0,n=careful()?3:1;k<n;k++){if(stop)throw Error("стоп");try{return await google(t,s,d)}catch(e){err=e;if(stop)throw Error("стоп");if(k<n-1)await sleep(careful()?1500:300)}}
+ if(stop)throw Error("стоп");try{return await mymem(t,s,d)}catch(e){throw Error((err&&err.message||"Google")+"; "+e.message)}}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+$("stop").onclick=()=>{stop=true;if(cur)cur.abort()};
+$("go").onclick=async()=>{let t=$("txt").value.trim();if(!t)return;const out=$("out"),b=$("go"),st=$("stop"),pr=$("prog"),fin=$("fin");
+ b.disabled=true;st.style.display="block";stop=false;out.innerHTML="";fin.innerHTML="";pr.textContent="Начинаю…";const parts=[];
+ const seq=[...chain,$("dst").value],T0=performance.now();let done=0,skip=0,s=$("src").value,stopped=false,last="";
+ for(let i=0;i<seq.length;i++){if(stop){stopped=true;break}
+  const d=seq[i],fin1=i==seq.length-1;if(i%5==0||careful()||fin1)pr.textContent=`Шаг ${i+1} из ${seq.length}: ${N[d]}…`;
+  try{t=await tr(t,s,d);done++;s=d;if(!fin1)parts.push(`<details><summary>Шаг ${i+1} — ${esc(N[d])}</summary><div>${esc(t)}</div></details>`)}
+  catch(e){if(stop){stopped=true;break}skip++;last=e.message;parts.push(`<details class="err"><summary>Шаг ${i+1} — ${esc(N[d])}: пропущен (ошибка)</summary><div>${esc(e.message)}</div></details>`)}
+  if(careful()&&!fin1)await sleep(300)}
+ out.innerHTML=parts.join("");const okFinal=!stopped&&s==seq[seq.length-1];
+ fin.innerHTML=`<div class="final${okFinal?"":" err"}"><b>${okFinal?"🏁 Итог — ":"Последний результат — "}${esc(done?N[s]:"исходный текст")}</b><div>${esc(t)}</div></div>`;
+ const el=(performance.now()-T0)/1000;pr.textContent=(stopped?`Остановлено (${done} из ${seq.length} переведено)`:`Готово: ${seq.length} шагов`)+(skip?`, пропущено из-за ошибок: ${skip}`:"")+` · ${el.toFixed(1)} с · в среднем ${done?Math.round(el*1000/done):0} мс на язык`;
+ b.disabled=false;st.style.display="none"};
+draw();
+</script></body></html>
