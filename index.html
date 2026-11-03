@@ -15,6 +15,7 @@ button{background:#374151}button:disabled{opacity:.5}.p{background:#2563eb;borde
 .c{font-size:13px;padding:3px 8px;border-radius:12px;background:#1e3a8a;border:0}.n{color:#6b7280;font-size:13px}
 details,.final{background:#1f2937;border-radius:10px;padding:8px 10px;margin:6px 0;border-left:4px solid #2563eb}summary{color:#93c5fd;font-size:13px}
 .final{border-left-color:#22c55e;background:#14301f}.err{border-left-color:#ef4444}#prog{text-align:center;margin:8px 0;color:#93c5fd}
+.rm{color:#a5b4fc;font-style:italic;font-size:14px;margin-top:2px}body.norm .rm{display:none}.sp{min-height:40px;min-width:44px;padding:2px 10px;margin-left:6px;font-size:15px;vertical-align:middle}.src{background:#1f2937;border-radius:10px;padding:8px 10px;margin:6px 0;border-left:4px solid #6b7280}#live{font-size:14px;color:#9ca3af;margin:4px 0}
 </style></head><body><main>
 <h1>📞 Испорченный переводчик</h1>
 <div class="grid"><div class="col">
@@ -27,9 +28,10 @@ details,.final{background:#1f2937;border-radius:10px;padding:8px 10px;margin:6px
 <div class="btns" id="rb"></div>
 <div class="btns"><button id="shuf">🔀 Перемешать</button><button id="clr">🗑 Очистить цепочку</button></div>
 <label>Финальный язык</label><select id="dst"></select>
+<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="rmt" checked> Показывать транскрипцию</label>
 <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="spd"> Осторожный режим (медленнее, меньше риск блокировки)</label>
 <button class="p" id="go">Перевести по цепочке</button><button class="stop" id="stop">⏹ Стоп</button>
-</div><div class="col res"><div id="prog"></div><div id="fin"></div><div id="out"></div>
+</div><div class="col res"><div id="prog"></div><div id="live"></div><div id="srcbox"></div><div id="fin"></div><div id="out"></div>
 <p class="n">Перевод: Google Translate (запасной — MyMemory). Промежуточные шаги свёрнуты — нажми, чтобы открыть.</p>
 </div></div>
 </main><script>
@@ -52,29 +54,48 @@ function tf(u){const a=cur=new AbortController(),h=setTimeout(()=>a.abort(),care
 const careful=()=>$("spd").checked;
 // split text into chunks <= max chars, preferring sentence/space boundaries
 function chunks(t,max){const out=[];while(t.length>max){let k=-1;for(const sep of [". ","! ","? ","\n"," "]){k=t.lastIndexOf(sep,max-sep.length);if(k>max/2){k+=sep.length;break}k=-1}if(k<1)k=max;out.push(t.slice(0,k));t=t.slice(k)}if(t)out.push(t);return out}
-async function google1(t,s,d){const r=await tf(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${s}&tl=${d}&dt=t&q=${encodeURIComponent(t)}`);
- if(!r.ok)throw Error("Google HTTP "+r.status);const j=await r.json();const o=(j&&j[0]||[]).map(x=>x&&x[0]||"").join("");if(!o&&t.trim())throw Error("Google: пустой ответ");return o}
-async function google(t,s,d){let o="";for(const c of chunks(t,1500))o+=await google1(c,s,d);return o}
+async function google1(t,s,d){const r=await tf(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${s}&tl=${d}&dt=t&dt=rm&q=${encodeURIComponent(t)}`);
+ if(!r.ok)throw Error("Google HTTP "+r.status);const j=await r.json(),a=Array.isArray(j&&j[0])?j[0]:[];let o="",rm="",sr="";
+ for(const x of a){if(!Array.isArray(x))continue;if(typeof x[0]=="string")o+=x[0];else{if(typeof x[2]=="string")rm+=x[2];if(typeof x[3]=="string")sr+=x[3]}}
+ if(!o&&t.trim())throw Error("Google: пустой ответ");return{t:o,rm:rm,sr:sr,dl:typeof j[2]=="string"?j[2]:""}}
+async function google(t,s,d){const R={t:"",rm:"",sr:"",dl:""};for(const c of chunks(t,1500)){const x=await google1(c,s,d);R.t+=x.t;R.rm+=(R.rm&&x.rm?" ":"")+x.rm;R.sr+=(R.sr&&x.sr?" ":"")+x.sr;R.dl=R.dl||x.dl}return R}
 const mm=c=>({iw:"he",jw:"jv"}[c]||c);
 const dec=s=>{const e=document.createElement("textarea");e.innerHTML=s;return e.value};
 async function mymem1(t,s,d){const r=await tf(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(t)}&langpair=${s=="auto"?"Autodetect":mm(s)}|${mm(d)}`);
  if(!r.ok)throw Error("MyMemory HTTP "+r.status);const j=await r.json();const o=j.responseData&&j.responseData.translatedText;
  if(j.responseStatus!=200||!o||/^MYMEMORY WARNING|INVALID (TARGET|SOURCE) LANGUAGE/i.test(o))throw Error("MyMemory: "+(j.responseDetails||o||"ошибка"));return dec(o).replace(/<[^>]*>%\d+%<\/[^>]*>|%\d+%/g,"").replace(/<\/?[a-z][^>]*>/gi,"").replace(/\s+([,!?.])/g,"$1").replace(/\s{2,}/g," ").trim()}
-async function mymem(t,s,d){let o="";for(const c of chunks(t,450))o+=(o?" ":"")+await mymem1(c,s,d);return o}
+async function mymem(t,s,d){let o="";for(const c of chunks(t,450))o+=(o?" ":"")+await mymem1(c,s,d);return{t:o,rm:"",sr:"",dl:""}}
 async function tr(t,s,d){let err;for(let k=0,n=careful()?3:1;k<n;k++){if(stop)throw Error("стоп");try{return await google(t,s,d)}catch(e){err=e;if(stop)throw Error("стоп");if(k<n-1)await sleep(careful()?1500:300)}}
  if(stop)throw Error("стоп");try{return await mymem(t,s,d)}catch(e){throw Error((err&&err.message||"Google")+"; "+e.message)}}
+// --- transliteration + speech ---
+const showRm=(txt,rm,l)=>rm&&l!="-"&&rm.trim().toLowerCase()!=txt.trim().toLowerCase();
+const rmHtml=(txt,rm,l)=>showRm(txt,rm,l)?`<div class="rm">${esc(rm)}</div>`:"";
+let SP=[];const spBtn=(t,l)=>{SP.push({t:t,l:l});return`<button class="sp" data-sp="${SP.length-1}" title="Произнести">🔊</button>`};
+const bcp=c=>({iw:"he",jw:"jv",tl:"fil","zh-CN":"zh-CN","zh-TW":"zh-TW"}[c]||c.split("-")[0]);
+let voices=[];const lv=()=>{try{voices=speechSynthesis.getVoices()||[]}catch(e){}};if(window.speechSynthesis){lv();speechSynthesis.onvoiceschanged=lv}
+function pickVoice(c){const b=bcp(c).toLowerCase(),base=b.split("-")[0],n=v=>v.lang.toLowerCase().replace("_","-");
+ return voices.find(v=>n(v)==b)||voices.find(v=>n(v).split("-")[0]==base)||null}
+let aud=null;function stopSpeak(){try{speechSynthesis.cancel()}catch(e){}if(aud){aud.pause();aud.onended=null;aud=null}}
+function speak(t,c){stopSpeak();if(!t)return;const v=window.speechSynthesis&&pickVoice(c);
+ if(v){const u=new SpeechSynthesisUtterance(t);u.voice=v;u.lang=v.lang;speechSynthesis.speak(u);return"tts"}
+ const q=chunks(t,200);let i=0;const nx=()=>{if(i>=q.length){aud=null;return}aud=new Audio(`https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${encodeURIComponent(c)}&q=${encodeURIComponent(q[i++])}`);aud.onended=nx;aud.play().catch(()=>{aud=null})};nx();return"audio"}
+document.querySelector(".res").addEventListener("click",e=>{const k=e.target.dataset&&e.target.dataset.sp;if(k!=null){e.preventDefault();const x=SP[+k];if(x)speak(x.t,x.l)}});
+$("rmt").onchange=()=>document.body.classList.toggle("norm",!$("rmt").checked);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 $("stop").onclick=()=>{stop=true;if(cur)cur.abort()};
 $("go").onclick=async()=>{let t=$("txt").value.trim();if(!t)return;const out=$("out"),b=$("go"),st=$("stop"),pr=$("prog"),fin=$("fin");
- b.disabled=true;st.style.display="block";stop=false;out.innerHTML="";fin.innerHTML="";pr.textContent="Начинаю…";const parts=[];
- const seq=[...chain,$("dst").value],T0=performance.now();let done=0,skip=0,s=$("src").value,stopped=false,last="";
+ b.disabled=true;st.style.display="block";stop=false;out.innerHTML="";fin.innerHTML="";$("srcbox").innerHTML="";$("live").innerHTML="";SP=[];stopSpeak();pr.textContent="Начинаю…";const parts=[];
+ const seq=[...chain,$("dst").value],T0=performance.now();let done=0,skip=0,s=$("src").value,stopped=false,last="",rm="",src0=t,srcRm=null,srcL=s;
  for(let i=0;i<seq.length;i++){if(stop){stopped=true;break}
   const d=seq[i],fin1=i==seq.length-1;if(i%5==0||careful()||fin1)pr.textContent=`Шаг ${i+1} из ${seq.length}: ${N[d]}…`;
-  try{t=await tr(t,s,d);done++;s=d;if(!fin1)parts.push(`<details><summary>Шаг ${i+1} — ${esc(N[d])}</summary><div>${esc(t)}</div></details>`)}
+  try{const x=await tr(t,s,d);if(srcRm==null){srcRm=x.sr;if(srcL=="auto")srcL=x.dl||"auto"}t=x.t;rm=x.rm;done++;s=d;
+   if(i%5==0||careful()||fin1)$("live").innerHTML=`<div>${esc(t.slice(0,200))}</div>${rmHtml(t,rm,d)}`;
+   if(!fin1)parts.push(`<details><summary>Шаг ${i+1} — ${esc(N[d])}</summary><div>${esc(t)}${spBtn(t,d)}</div>${rmHtml(t,rm,d)}</details>`)}
   catch(e){if(stop){stopped=true;break}skip++;last=e.message;parts.push(`<details class="err"><summary>Шаг ${i+1} — ${esc(N[d])}: пропущен (ошибка)</summary><div>${esc(e.message)}</div></details>`)}
   if(careful()&&!fin1)await sleep(300)}
- out.innerHTML=parts.join("");const okFinal=!stopped&&s==seq[seq.length-1];
- fin.innerHTML=`<div class="final${okFinal?"":" err"}"><b>${okFinal?"🏁 Итог — ":"Последний результат — "}${esc(done?N[s]:"исходный текст")}</b><div>${esc(t)}</div></div>`;
+ out.innerHTML=parts.join("");$("live").innerHTML="";
+ $("srcbox").innerHTML=`<div class="src"><b>📝 Исходный текст${N[srcL]?" — "+esc(N[srcL]):""}</b><div>${esc(src0)}${srcL!="auto"?spBtn(src0,srcL):""}</div>${rmHtml(src0,srcRm||"",srcL)}</div>`;const okFinal=!stopped&&s==seq[seq.length-1];
+ fin.innerHTML=`<div class="final${okFinal?"":" err"}"><b>${okFinal?"🏁 Итог — ":"Последний результат — "}${esc(done?N[s]:"исходный текст")}</b><div>${esc(t)}${done?spBtn(t,s):""}</div>${done?rmHtml(t,rm,s=="ru"?"-":s):""}</div>`;
  const el=(performance.now()-T0)/1000;pr.textContent=(stopped?`Остановлено (${done} из ${seq.length} переведено)`:`Готово: ${seq.length} шагов`)+(skip?`, пропущено из-за ошибок: ${skip}`:"")+` · ${el.toFixed(1)} с · в среднем ${done?Math.round(el*1000/done):0} мс на язык`;
  b.disabled=false;st.style.display="none"};
 draw();
